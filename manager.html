@@ -432,8 +432,8 @@
     <div class="filters" id="filters">
       <button data-f="all" class="active">الكل</button>
       <button data-f="confirmed">مؤكد</button>
-      <button data-f="postponed">مؤجل</button>
-      <button data-f="cancelled">ملغي</button>
+      <button data-f="postponed">تأجيل</button>
+      <button data-f="cancelled">إلغاء</button>
     </div>
     <span class="offchip" id="offlineChip" hidden></span>
     <div class="spacer"></div>
@@ -866,8 +866,8 @@ function weekRange(){
 }
 
 function dispStatus(a){
-  if(a.status==='rejected')  return {k:'cancelled',t:'ملغي'};
-  if(a.status==='postponed') return {k:'postponed',t:'مؤجل'};
+  if(a.status==='rejected')  return {k:'cancelled',t:'إلغاء'};
+  if(a.status==='postponed') return {k:'postponed',t:'تأجيل'};
   return {k:'confirmed',t:'مؤكد'};  /* approved by default */
 }
 function statusPill(a){
@@ -879,13 +879,13 @@ function actionsCell(a){
     const k=dispStatus(a).k;
     if(isFinished(a)){
       return `<div class="cellactions">
-        <button class="stbtn canc ${k==='cancelled'?'on':''}" disabled>ملغي</button>
-        <button class="stbtn post ${k==='postponed'?'on':''}" disabled>مؤجل</button>
+        <button class="stbtn canc ${k==='cancelled'?'on':''}" disabled>إلغاء</button>
+        <button class="stbtn post ${k==='postponed'?'on':''}" disabled>تأجيل</button>
       </div>`;
     }
     return `<div class="cellactions">
-      <button class="stbtn canc ${k==='cancelled'?'on':''}" onclick="mact('cancel','${a.id}')">ملغي</button>
-      <button class="stbtn post ${k==='postponed'?'on':''}" onclick="mact('postpone','${a.id}')">مؤجل</button>
+      <button class="stbtn canc ${k==='cancelled'?'on':''}" onclick="mact('cancel','${a.id}')">إلغاء</button>
+      <button class="stbtn post ${k==='postponed'?'on':''}" onclick="mact('postpone','${a.id}')">تأجيل</button>
     </div>`;
   }
   return `<div class="cellactions">${statusPill(a)}
