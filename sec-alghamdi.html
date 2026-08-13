@@ -416,8 +416,12 @@
   .rangebar-fields{display:flex;align-items:center;gap:10px;min-width:0}
   @media (max-width:720px){
     .toolbar .spacer{display:none}
-    .toolbtns{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;gap:5px;padding-bottom:2px;-webkit-overflow-scrolling:touch;justify-content:flex-start}
-    .toolbtns .iconbtn{flex:0 0 auto;min-width:50px}
+    .toolbtns{flex:1 1 100%;display:flex;flex-wrap:nowrap;gap:4px;align-items:stretch;justify-content:space-between}
+    .toolbtns>*{flex:1 1 0;min-width:0}
+    .toolbtns .iconbtn{width:auto;padding:6px 2px}
+    .toolbtns .notifwrap>.iconbtn{width:100%;min-width:0}
+    .toolbtns .iconbtn svg{width:20px;height:20px}
+    .toolbtns .iconbtn[data-tip]::after{font-size:9.5px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
     .rangebar{flex-wrap:wrap}
     .rangebar-fields{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;gap:8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
     .rangebar-fields label,.rangebar-fields .rangelabel,.rangebar-fields #rangeClear{flex:0 0 auto;white-space:nowrap}
