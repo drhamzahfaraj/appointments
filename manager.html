@@ -774,12 +774,15 @@ function applyOptimistic(action,p){
 }
 async function writeApi(action,payload){
   lastWriteQueued=false;
+  applyOptimistic(action,payload); render();                 /* show the change instantly */
   if(!cfg.endpoint) return demoApi(action,payload);
   try{
     const res=await fetch(cfg.endpoint,{method:"POST",body:JSON.stringify({action,role:ROLE,by:ACTOR,deviceKey:(cfg.deviceKey||""),...payload})});
-    const j=await res.json(); if(!j.ok) throw new Error(j.error||"error"); return j.data;
+    const j=await res.json(); if(!j.ok) throw new Error(j.error||"error");
+    data=j.data; render();                                   /* reconcile with the server (one round-trip) */
+    return data;
   }catch(e){
-    lastWriteQueued=true; offlineQueue.push({action,payload}); saveQueue(); applyOptimistic(action,payload); return data;
+    lastWriteQueued=true; offlineQueue.push({action,payload}); saveQueue(); return data;   /* keep the optimistic change, sync later */
   }
 }
 async function flushQueue(){
@@ -795,9 +798,9 @@ window.addEventListener("online", flushQueue);
 setInterval(()=>{ if(offlineQueue.length) flushQueue(); }, 15000);
 
 /* ===== render ===== */
-async function refresh(){
+async function refresh(silent){
   try{ data=await api("list")||[]; }
-  catch(e){ $("#emptyBox").innerHTML='<div class="empty">تعذّر الاتصال. تحقّق من الرابط والإنترنت.</div>'; toast("تعذّر الاتصال",true); return; }
+  catch(e){ if(!silent && !(data&&data.length)){ $("#emptyBox").innerHTML='<div class="empty">تعذّر الاتصال. تحقّق من الرابط والإنترنت.</div>'; toast("تعذّر الاتصال",true); } return; }   /* keep current data on a transient blip; only alert on first-load failure */
   if(selectedWeekday!=null) renderCalendar();
   render();
   if(!isMgr) detectNotifs();
@@ -1047,7 +1050,7 @@ function calGotoToday(){
 async function act(action,id){
   if(action==="delete"&&!confirm("حذف هذا الموعد نهائيًا؟"))return;
   try{ await writeApi(action,{id});
-    toast(lastWriteQueued?"غير متصل — سيُزامن لاحقًا":(action==="approve"?"تم تأكيد الموعد":action==="reject"?"تم إلغاء الموعد":"تم الحذف")); refresh();
+    toast(lastWriteQueued?"غير متصل — سيُزامن لاحقًا":(action==="approve"?"تم تأكيد الموعد":action==="reject"?"تم إلغاء الموعد":"تم الحذف"));
   }catch(e){ toast("تعذّر الاتصال",true); }
 }
 window.act=act;
@@ -1058,7 +1061,7 @@ async function mact(kind,id){
   let action,msg;
   if(kind==='cancel'){ action=(k==='cancelled')?'approve':'reject'; msg=(action==='reject')?"تم إلغاء الموعد":"أُعيد الموعد إلى «مؤكد»"; }
   else { action=(k==='postponed')?'approve':'postpone'; msg=(action==='postpone')?"تم تأجيل الموعد":"أُعيد الموعد إلى «مؤكد»"; }
-  try{ await writeApi(action,{id}); toast(lastWriteQueued?"غير متصل — سيُزامن لاحقًا":msg); refresh(); }
+  try{ await writeApi(action,{id}); toast(lastWriteQueued?"غير متصل — سيُزامن لاحقًا":msg); }
   catch(e){ toast("تعذّر الاتصال",true); }
 }
 window.mact=mact;
@@ -1177,7 +1180,7 @@ async function saveModal(){
       }
       toast(lastWriteQueued?"غير متصل — سيُزامن لاحقًا":(made>1?`تم إنشاء ${toAr(made)} مواعيد`+(skipped?` (تخطّي ${toAr(skipped)} لتعارض)`:''):"تم حفظ الموعد"));
     }
-    $("#ov").classList.remove("show"); refresh();
+    $("#ov").classList.remove("show");
   }catch(e){ toast("تعذّر الاتصال",true); }
 }
 
@@ -1391,14 +1394,14 @@ if(isMgr){
   });
   $("#notifRead").addEventListener("click",e=>{ e.stopPropagation(); markNotifsRead(); });
   document.addEventListener("click",e=>{ if(!e.target.closest("#notifWrap")){ const p=$("#notifPanel"); if(p&&!p.hidden) p.hidden=true; } });
-  setInterval(refresh, 20000);
+  setInterval(()=>refresh(true), 45000);
 }
 
 /* boot */
 document.querySelectorAll(".iconbtn[title]").forEach(el=>{ const t=el.getAttribute("title"); el.setAttribute("aria-label",t); el.dataset.tip=t; el.removeAttribute("title"); });
 applyFontScale();
 updateViewBtn();
-setInterval(refresh, 30000); /* auto-refresh every 30 seconds (both roles stay in sync) */
+void 0 /* duplicate poller removed */; /* auto-refresh every 30 seconds (both roles stay in sync) */
 updateOfflineChip();
 flushQueue();
 refresh();
