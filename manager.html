@@ -410,6 +410,21 @@
   .daybar button:hover{background:linear-gradient(180deg,#33435d,#1a2b45) !important}
   .daybar button.active{background:#eef1f6 !important;color:#1a2b45 !important;box-shadow:inset 0 -4px 0 #1a2b45 !important}
   .datebar{background:linear-gradient(180deg,#2c3c57,#16273f) !important}
+
+  /* keep icon buttons + date-range fields each on ONE line (esp. on phones) */
+  .toolbtns{display:flex;align-items:center;gap:10px}
+  .rangebar-fields{display:flex;align-items:center;gap:10px;min-width:0}
+  @media (max-width:720px){
+    .toolbar .spacer{display:none}
+    .toolbtns{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;gap:5px;padding-bottom:2px;-webkit-overflow-scrolling:touch;justify-content:flex-start}
+    .toolbtns .iconbtn{flex:0 0 auto;min-width:50px}
+    .rangebar{flex-wrap:wrap}
+    .rangebar-fields{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;gap:8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+    .rangebar-fields label,.rangebar-fields .rangelabel,.rangebar-fields #rangeClear{flex:0 0 auto;white-space:nowrap}
+    .rangebar-fields input[type=date]{flex:0 0 auto}
+    .rangebar .rbdiv{display:none}
+    .rangebar .searchbox{flex:1 1 100%!important;min-width:0;width:100%}
+  }
 </style>
 </head>
 <body>
@@ -437,6 +452,7 @@
     </div>
     <span class="offchip" id="offlineChip" hidden></span>
     <div class="spacer"></div>
+    <div class="toolbtns">
     <button class="iconbtn fsbtn" id="fsDown" data-tip="تصغير حجم الخط" aria-label="تصغير حجم الخط">أ−</button>
     <button class="iconbtn fsbtn" id="fsUp" data-tip="تكبير حجم الخط" aria-label="تكبير حجم الخط">أ+</button>
     <button class="iconbtn" id="btnPreview" data-tip="معاينة جدول الأسبوع الحالي" aria-label="معاينة جدول الأسبوع الحالي"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -453,6 +469,7 @@
         <div class="npbody" id="notifBody"></div>
         <div class="npfoot"><button class="btn btn-primary btn-sm" id="notifRead">✓ تم الاطلاع</button></div>
       </div>
+    </div>
     </div>
   </div>
 
@@ -486,10 +503,12 @@
 
   <!-- date interval picker -->
   <div class="rangebar">
+    <div class="rangebar-fields">
     <span class="rangelabel">عرض الفترة:</span>
     <label>من <input type="date" id="rangeFrom"></label>
     <label>إلى <input type="date" id="rangeTo"></label>
     <button class="btn btn-ghost btn-sm" id="rangeClear">مسح الفترة</button>
+    </div>
     <span class="rbdiv"></span>
     <input type="search" id="searchBox" placeholder="🔍 بحث في المواعيد…" class="searchbox">
   </div>
