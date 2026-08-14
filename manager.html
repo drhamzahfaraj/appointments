@@ -414,6 +414,7 @@
   /* keep icon buttons + date-range fields each on ONE line (esp. on phones) */
   .toolbtns{display:flex;align-items:center;gap:10px}
   .rangebar-fields{display:flex;align-items:center;gap:10px;min-width:0}
+  .cardbtns{display:contents}
   @media (max-width:720px){
     .toolbar .spacer{display:none}
     .toolbtns{flex:1 1 100%;display:flex;flex-wrap:nowrap;gap:4px;align-items:stretch;justify-content:space-between}
@@ -423,9 +424,17 @@
     .toolbtns .iconbtn svg{width:20px;height:20px}
     .toolbtns .iconbtn[data-tip]::after{font-size:9.5px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
     .rangebar{flex-wrap:wrap}
-    .rangebar-fields{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;gap:8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
-    .rangebar-fields label,.rangebar-fields .rangelabel,.rangebar-fields #rangeClear{flex:0 0 auto;white-space:nowrap}
-    .rangebar-fields input[type=date]{flex:0 0 auto}
+    .rangebar-fields{flex:1 1 100%;flex-direction:column;align-items:stretch;gap:8px;overflow:visible}
+    .rangebar-fields .rangelabel{align-self:flex-start}
+    .rangebar-fields label{display:flex;align-items:center;gap:8px;width:100%;white-space:nowrap}
+    .rangebar-fields label input[type=date]{flex:1 1 auto;min-width:0;width:100%}
+    .rangebar-fields #rangeClear{align-self:flex-start}
+    /* appointment card: status pill on the الإجراء line, action buttons in a clean full-width row below */
+    .appttable td[data-label="الإجراء"]{flex-wrap:wrap}
+    .appttable td[data-label="الإجراء"] .cellactions{display:contents}
+    .appttable td[data-label="الإجراء"] .cardbtns{display:flex;flex:1 1 100%;gap:8px;margin-top:8px}
+    .appttable td[data-label="الإجراء"] .cardbtns>.btn,
+    .appttable td[data-label="الإجراء"] .cardbtns>.stbtn{flex:1 1 0;min-width:0;justify-content:center;text-align:center}
     .rangebar .rbdiv{display:none}
     .rangebar .searchbox{flex:1 1 100%!important;min-width:0;width:100%}
   }
@@ -678,7 +687,7 @@ const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){retu
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 let cfg = store.get("gov_cfg_"+ROLE) || {endpoint:""};
 if(ENDPOINT){ cfg.endpoint=ENDPOINT; store.set("gov_cfg_"+ROLE,cfg); }   /* baked-in URL always wins */
-let filter="all", data=[];
+let filter="all", data = store.get("gov_data_"+ROLE) || [];
 let demo = store.get("gov_demo") || null;
 
 /* ===== helpers: Arabic numerals / dates / time ===== */
@@ -797,16 +806,14 @@ function applyOptimistic(action,p){
 }
 async function writeApi(action,payload){
   lastWriteQueued=false;
-  applyOptimistic(action,payload); render();                 /* show the change instantly */
+  applyOptimistic(action,payload); render(); store.set("gov_data_"+ROLE, data);   /* show + cache instantly */
   if(!cfg.endpoint) return demoApi(action,payload);
-  try{
-    const res=await fetch(cfg.endpoint,{method:"POST",body:JSON.stringify({action,role:ROLE,by:ACTOR,deviceKey:(cfg.deviceKey||""),...payload})});
-    const j=await res.json(); if(!j.ok) throw new Error(j.error||"error");
-    data=j.data; render();                                   /* reconcile with the server (one round-trip) */
-    return data;
-  }catch(e){
-    lastWriteQueued=true; offlineQueue.push({action,payload}); saveQueue(); return data;   /* keep the optimistic change, sync later */
-  }
+  /* sync in the background so the UI never waits on the round-trip */
+  fetch(cfg.endpoint,{method:"POST",body:JSON.stringify({action,role:ROLE,by:ACTOR,deviceKey:(cfg.deviceKey||""),...payload})})
+    .then(function(res){ return res.json(); })
+    .then(function(j){ if(!j.ok) throw new Error(j.error||"error"); if(Array.isArray(j.data)){ data=j.data; render(); store.set("gov_data_"+ROLE, data); } })
+    .catch(function(e){ lastWriteQueued=true; offlineQueue.push({action,payload}); saveQueue(); updateOfflineChip(); });
+  return data;
 }
 async function flushQueue(){
   if(!cfg.endpoint || !offlineQueue.length) return;
@@ -822,7 +829,7 @@ setInterval(()=>{ if(offlineQueue.length) flushQueue(); }, 15000);
 
 /* ===== render ===== */
 async function refresh(silent){
-  try{ data=await api("list")||[]; }
+  try{ data=await api("list")||[]; store.set("gov_data_"+ROLE, data); }
   catch(e){ if(!silent && !(data&&data.length)){ $("#emptyBox").innerHTML='<div class="empty">تعذّر الاتصال. تحقّق من الرابط والإنترنت.</div>'; toast("تعذّر الاتصال",true); } return; }   /* keep current data on a transient blip; only alert on first-load failure */
   if(selectedWeekday!=null) renderCalendar();
   render();
@@ -901,21 +908,18 @@ function actionsCell(a){
   if(isMgr){
     const k=dispStatus(a).k;
     if(isFinished(a)){
-      return `<div class="cellactions">
+      return `<div class="cellactions">${statusPill(a)}<div class="cardbtns">
         <button class="stbtn canc ${k==='cancelled'?'on':''}" disabled>إلغاء</button>
-        <button class="stbtn post ${k==='postponed'?'on':''}" disabled>تأجيل</button>
-      </div>`;
+        <button class="stbtn post ${k==='postponed'?'on':''}" disabled>تأجيل</button></div></div>`;
     }
-    return `<div class="cellactions">
+    return `<div class="cellactions">${statusPill(a)}<div class="cardbtns">
       <button class="stbtn canc ${k==='cancelled'?'on':''}" onclick="mact('cancel','${a.id}')">إلغاء</button>
-      <button class="stbtn post ${k==='postponed'?'on':''}" onclick="mact('postpone','${a.id}')">تأجيل</button>
-    </div>`;
+      <button class="stbtn post ${k==='postponed'?'on':''}" onclick="mact('postpone','${a.id}')">تأجيل</button></div></div>`;
   }
-  return `<div class="cellactions">${statusPill(a)}
+  return `<div class="cellactions">${statusPill(a)}<div class="cardbtns">
     <button class="btn btn-ghost btn-sm" onclick="openEdit('${a.id}')">✎ تعديل</button>
     <button class="btn btn-ghost btn-sm" onclick="act('delete','${a.id}')">حذف</button>
-    <button class="btn btn-ghost btn-sm" title="السجل" onclick="showHistory('${a.id}')">🕘 السجل</button>
-  </div>`;
+    <button class="btn btn-ghost btn-sm" title="السجل" onclick="showHistory('${a.id}')">🕘 السجل</button></div></div>`;
 }
 
 function rowHtml(a, dayspan, dayTop, nn){
@@ -1060,6 +1064,7 @@ function selectDate(iso){ selectedDate=iso; rangeFrom=""; rangeTo=""; viewMode="
   if($("#rangeFrom")){ $("#rangeFrom").value=""; $("#rangeTo").value=""; }
   if(typeof updateViewBtn==="function") updateViewBtn();
   $$("#calGrid .cal-cell").forEach(c=>c.classList.toggle("sel", c.dataset.iso===iso));
+  if($("#calpop")) $("#calpop").hidden=true;   /* close the calendar automatically after a date is picked */
   render(); }
 window.selectDate=selectDate;
 function calClearDate(){ selectedDate=null; renderCalendar(); render(); }
@@ -1417,7 +1422,7 @@ if(isMgr){
   });
   $("#notifRead").addEventListener("click",e=>{ e.stopPropagation(); markNotifsRead(); });
   document.addEventListener("click",e=>{ if(!e.target.closest("#notifWrap")){ const p=$("#notifPanel"); if(p&&!p.hidden) p.hidden=true; } });
-  setInterval(()=>refresh(true), 45000);
+  setInterval(()=>refresh(true), 3000);
 }
 
 /* boot */
@@ -1426,8 +1431,9 @@ applyFontScale();
 updateViewBtn();
 void 0 /* duplicate poller removed */; /* auto-refresh every 30 seconds (both roles stay in sync) */
 updateOfflineChip();
+render();               /* show cached appointments instantly */
 flushQueue();
-refresh();
+refresh(data.length>0);  /* then sync silently in the background */
 </script>
 <script>
 (function(){
