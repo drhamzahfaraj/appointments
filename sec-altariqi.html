@@ -378,7 +378,8 @@
 </style>
 <style id="govHeadStyle">
   :root{ --head-navy-1:#33435d; --head-navy-2:#1a2b45; --head-navy-3:#10233a; --head-emblem:clamp(96px,12vw,140px); }
-  .gov-head{margin:0 0 14px;padding-bottom:12px;border-bottom:3px solid var(--gov-green)}
+  .gov-head{margin:0 0 14px;padding-bottom:12px;border-bottom:3px solid var(--gov-green);background:var(--head-bg)}
+  .sheet>.gov-head{position:sticky;top:0;z-index:50}
   .gov-head__row{display:grid;grid-template-columns:var(--head-emblem) 1fr var(--head-emblem);align-items:center;gap:clamp(10px,2vw,26px);max-width:1180px;margin:0 auto}
   .gov-head__emblem{justify-self:start}
   .gov-head__emblem img{width:var(--head-emblem);height:auto;display:block}
@@ -424,26 +425,30 @@
     .toolbtns .iconbtn svg{width:20px;height:20px}
     .toolbtns .iconbtn[data-tip]::after{font-size:9.5px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
     .rangebar{display:block}
-    /* date range: each field on its own line, real spacing via margins (no reliance on flex-gap) */
-    .rangebar-fields{display:block;overflow:visible}
-    .rangebar-fields .rangelabel{display:block;margin:0 0 8px}
-    .rangebar-fields label{display:block;margin:0 0 10px;white-space:nowrap}
-    .rangebar-fields label input[type=date]{display:inline-block;width:auto;max-width:70%;margin-inline-start:10px;vertical-align:middle}
-    .rangebar-fields #rangeClear{display:inline-block;margin:0 0 4px}
+    /* date range: من + إلى side by side, erase as a small icon */
+    .rangebar-fields{display:flex;flex-wrap:wrap;align-items:center;overflow:visible}
+    .rangebar-fields .rangelabel{flex:1 1 100%;margin:0 0 8px}
+    .rangebar-fields label{flex:1 1 0;min-width:0;display:flex;align-items:center;margin:0;white-space:nowrap;font-size:13px}
+    .rangebar-fields label+label{margin-inline-start:8px}
+    .rangebar-fields label input[type=date]{flex:1 1 auto;min-width:0;width:100%;margin-inline-start:6px}
+    .rangebar-fields #rangeClear{flex:0 0 auto;margin-inline-start:8px;padding:8px;line-height:0}
+    .rangebar-fields #rangeClear svg{width:18px;height:18px;display:block}
     .rangebar .rbdiv{display:none}
-    .rangebar .searchbox{display:block;width:100%;margin-top:6px}
-    /* day cell: put the date on the SAME line as the day name */
-    .appttable td.day{display:block!important}
+    .rangebar .searchbox{display:block;width:100%;margin-top:10px}
+    /* day cell: date next to the day; sizes matched to الوقت */
+    .appttable td.day{display:block!important;padding-left:84px}
     .appttable td.day::before{margin-inline-end:8px}
-    .appttable td.day .wd{display:inline;font-weight:800;margin-inline-end:10px}
-    .appttable td.day .hj{display:inline;margin-inline-end:10px}
-    .appttable td.day .gr{display:inline}
-    /* action cell: status pill on the الإجراء line, all buttons in one clean row below (float-based, iOS-safe) */
+    .appttable td.day .wd{display:inline;font-weight:800;font-size:15px;margin-inline-end:10px}
+    .appttable td.day .hj{display:inline;font-size:13px;margin-inline-end:10px}
+    .appttable td.day .gr{display:inline;font-size:13px}
+    .appttable td.time{font-size:15px}
+    /* appointment status shown as a badge in the card top-left corner; الإجراء label removed */
+    .appttable tbody tr{position:relative}
     .appttable td[data-label="الإجراء"]{display:block!important}
-    .appttable td[data-label="الإجراء"]::before{float:right;font-weight:800;color:var(--muted)}
-    .appttable td[data-label="الإجراء"] .cellactions{display:block;overflow:hidden}
-    .appttable td[data-label="الإجراء"] .cellactions>.pill{float:left}
-    .appttable td[data-label="الإجراء"] .cardbtns{display:flex;clear:both;margin-top:10px;width:100%}
+    .appttable td[data-label="الإجراء"]::before{display:none}
+    .appttable td[data-label="الإجراء"] .cellactions{display:block}
+    .appttable td[data-label="الإجراء"] .cellactions>.pill{position:absolute;top:8px;left:8px;z-index:3}
+    .appttable td[data-label="الإجراء"] .cardbtns{display:flex;width:100%}
     .appttable td[data-label="الإجراء"] .cardbtns>.btn,
     .appttable td[data-label="الإجراء"] .cardbtns>.stbtn{flex:1 1 0;min-width:0;justify-content:center;text-align:center;margin-inline-start:8px}
     .appttable td[data-label="الإجراء"] .cardbtns>*:first-child{margin-inline-start:0}
@@ -532,7 +537,7 @@
     <span class="rangelabel">عرض الفترة:</span>
     <label>من <input type="date" id="rangeFrom"></label>
     <label>إلى <input type="date" id="rangeTo"></label>
-    <button class="btn btn-ghost btn-sm" id="rangeClear">مسح الفترة</button>
+    <button class="btn btn-ghost btn-sm" id="rangeClear" title="مسح الفترة" aria-label="مسح الفترة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M15 9l-6 6M9 9l6 6"></path></svg></button>
     </div>
     <span class="rbdiv"></span>
     <input type="search" id="searchBox" placeholder="🔍 بحث في المواعيد…" class="searchbox">
