@@ -391,9 +391,7 @@
   .toolbtns.mgr-toolbtns{justify-content:center;gap:10px;align-items:center}
   .toolbtns.mgr-toolbtns>*{flex:0 0 auto;width:auto}
   .toolbtns.mgr-toolbtns .iconbtn{flex:0 0 auto;width:auto;min-width:56px}
-  .mgr-viewbtn{display:inline-flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:12px;padding:0 16px;font-weight:800;font-size:14px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-  .mgr-viewbtn>span,.mgr-viewbtn>svg{pointer-events:none}
-  .mgr-viewbtn .chev{width:16px;height:16px;flex:0 0 auto}
+  .mgr-viewsel-native{height:44px;box-sizing:border-box;border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:12px;padding:0 16px 0 38px;font-weight:800;font-size:14px;font-family:var(--font);-webkit-appearance:none;appearance:none;cursor:pointer;touch-action:manipulation;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a2b45' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:left 12px center}
   /* search: same pill height as the selector, icon only */
   .toolbtns.mgr-toolbtns #mgrSearchBtn{flex-direction:row;height:44px;box-sizing:border-box;min-height:0;min-width:auto;padding:0 16px;border:1px solid #d8dde6;background:#f2f4f7;border-radius:12px;color:#1a2b45;align-items:center;justify-content:center;gap:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   .toolbtns.mgr-toolbtns #mgrSearchBtn::after{display:none!important}
@@ -411,7 +409,7 @@
     font-family:"EmblemTitle",var(--font);line-height:1.5;font-weight:700}
   .gov-head__title span{display:block;white-space:nowrap;font-size:clamp(16px,2.4vw,28px)}
   .gov-head__daterow{max-width:1180px;margin:12px auto 0;text-align:center}
-  .gov-head__date{display:inline-block;color:#fff;border-radius:11px;font-weight:700;white-space:nowrap;
+  .gov-head__date{display:inline-flex;align-items:center;justify-content:center;text-align:center;min-width:min(640px,96%);min-height:44px;color:#fff;border-radius:11px;font-weight:700;white-space:nowrap;
     font-family:var(--font);
     background:radial-gradient(ellipse at 50% 40%,var(--head-navy-1) 0%,var(--head-navy-2) 70%,var(--head-navy-3) 100%);
     padding:clamp(6px,1vw,10px) clamp(16px,3vw,34px);font-size:clamp(12px,1.6vw,18px);
@@ -421,7 +419,7 @@
     .gov-head__spacer{display:none}
     .gov-head__emblem img{width:clamp(64px,20vw,88px)}
     .gov-head__title span{white-space:normal;font-size:clamp(14px,4vw,20px)}
-    .gov-head__date{white-space:normal;line-height:1.9;font-size:12.5px}
+    .gov-head__date{white-space:normal;line-height:1.6;font-size:12.5px;min-width:0;width:calc(100% - 6px);min-height:56px;display:flex;align-items:center;justify-content:center}
   }
   @media print{ .gov-head{display:none!important} }
   /* printable / preview header — mirrors the on-screen header */
@@ -1054,13 +1052,19 @@ function render(){
 function renderSummary(){
   const el=$("#summaryStrip"); if(!el) return;
   const t=todayISO(), now=Date.now();
-  const todays=data.filter(a=>a.date===t && dispStatus(a).k!=='cancelled');
-  const upcoming=todays.filter(a=>a.time && new Date(a.date+"T"+a.time).getTime()>now)
-    .sort((x,y)=>(x.time||"").localeCompare(y.time||""));
+  let scope, label;
+  if(typeof isMgr!=='undefined' && isMgr){
+    if(selectedDate){ scope=a=>a.date===selectedDate; label=(selectedDate===t)?"مواعيد اليوم":"مواعيد هذا اليوم"; }
+    else if(viewMode==='all'){ scope=a=>a.date && a.date>=t; label="المواعيد القادمة"; }
+    else { const wr=weekRange(); scope=a=>a.date && a.date>=wr[0] && a.date<=wr[1]; label="مواعيد الأسبوع"; }
+  } else { scope=a=>a.date===t; label="مواعيد اليوم"; }
+  const items=data.filter(a=>scope(a) && dispStatus(a).k!=='cancelled');
+  const upcoming=items.filter(a=>a.time && new Date(a.date+"T"+a.time).getTime()>now)
+    .sort((x,y)=>((x.date+(x.time||""))||"").localeCompare((y.date+(y.time||""))||""));
   const nextA=upcoming[0];
-  let html=`<span class="sm-item"><span class="sm-dot"></span>مواعيد اليوم: <b>${toAr(todays.length)}</b></span>`;
+  let html=`<span class="sm-item"><span class="sm-dot"></span>${label}: <b>${toAr(items.length)}</b></span>`;
   if(nextA) html+=`<span class="sm-item sm-next">التالي: <b>${fmtTime(nextA.time)}</b> — ${esc(nextA.purpose)||'موعد'}${nextA.location?(' · '+esc(nextA.location)):''}</span>`;
-  else if(todays.length) html+=`<span class="sm-item">لا مواعيد متبقية اليوم</span>`;
+  else if(items.length) html+=`<span class="sm-item">لا مواعيد قادمة</span>`;
   el.innerHTML=html;
 }
 
@@ -1467,21 +1471,14 @@ if(isMgr){
 
   /* ===== manager view controls: grouped view-selector icon + search icon (inline, no popups) ===== */
   var _tb=document.querySelector(".toolbtns");
-  if(_tb && !document.getElementById("mgrViewBtn")){
-    /* search icon first -> sits on the RIGHT in RTL */
+  if(_tb && !document.getElementById("mgrViewSel")){
     var _sb=document.createElement("button"); _sb.className="iconbtn"; _sb.id="mgrSearchBtn"; _sb.setAttribute("data-tip","بحث وتصفية"); _sb.setAttribute("aria-label","بحث وتصفية");
     _sb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>';
-    /* one merged view selector; click to choose which appointments to view */
-    var _vbtn=document.createElement("button"); _vbtn.className="mgr-viewbtn"; _vbtn.id="mgrViewBtn"; _vbtn.setAttribute("aria-label","اختيار العرض");
-    _vbtn.innerHTML='<span id="mgrViewLabel">مواعيد الأسبوع الحالي</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';
-    _tb.appendChild(_sb); _tb.appendChild(_vbtn); _tb.classList.add("mgr-toolbtns");
-    var _opts=document.createElement("div"); _opts.id="mgrViewOpts"; _opts.className="mgr-viewopts"; _opts.hidden=true;
-    _opts.innerHTML='<button data-v="today">مواعيد اليوم</button><button data-v="week">مواعيد الأسبوع الحالي</button><button data-v="all">مواعيد اليوم فصاعدًا</button>';
-    var _toolbar=document.querySelector(".toolbar"); _toolbar.parentNode.insertBefore(_opts,_toolbar.nextSibling);
+    var _sel=document.createElement("select"); _sel.id="mgrViewSel"; _sel.className="mgr-viewsel-native"; _sel.setAttribute("aria-label","اختيار العرض");
+    _sel.innerHTML='<option value="today">مواعيد اليوم</option><option value="week">مواعيد الأسبوع الحالي</option><option value="all">مواعيد اليوم فصاعدًا</option>';
+    _tb.appendChild(_sb); _tb.appendChild(_sel); _tb.classList.add("mgr-toolbtns");
   }
-  /* remove the status filters bar for the manager */
   document.querySelector(".filters")?.remove();
-  /* collapse the navy day tabs + date fields into a search panel, hidden until the search icon is tapped */
   var _dayw=document.querySelector(".daybar-wrap"), _rangeb=document.querySelector(".rangebar");
   if(_dayw && _rangeb && !document.getElementById("mgrSearchPanel")){
     var _panel=document.createElement("div"); _panel.id="mgrSearchPanel"; _panel.className="mgr-searchpanel"; _panel.hidden=true;
@@ -1499,14 +1496,12 @@ if(isMgr){
     selectedWeekday=null;
     if(mode==="today"){ selectedDate=todayISO(); }
     else { selectedDate=null; viewMode=(mode==="all")?"all":"week"; }
-    document.querySelectorAll("#mgrViewOpts button").forEach(function(x){ x.classList.toggle("sel", x.dataset.v===mode); });
-    var txt = mode==="today"?"مواعيد اليوم":mode==="all"?"مواعيد اليوم فصاعدًا":"مواعيد الأسبوع الحالي";
-    var lbl=document.getElementById("mgrViewLabel"); if(lbl) lbl.textContent=txt;
+    var sel=document.getElementById("mgrViewSel"); if(sel && sel.value!==mode) sel.value=mode;
     mgrHeaderDate(mode); render();
   }
-  document.getElementById("mgrViewBtn")?.addEventListener("click",function(){ var o=document.getElementById("mgrViewOpts"); if(o) o.hidden=!o.hidden; });
-  document.querySelectorAll("#mgrViewOpts button").forEach(function(btn){ btn.addEventListener("click",function(){ mgrSetView(btn.dataset.v); var o=document.getElementById("mgrViewOpts"); if(o) o.hidden=true; }); });
+  document.getElementById("mgrViewSel")?.addEventListener("change",function(){ mgrSetView(this.value); });
   document.getElementById("mgrSearchBtn")?.addEventListener("click",function(){ var p=document.getElementById("mgrSearchPanel"); if(p) p.hidden=!p.hidden; });
+  var _s0=document.getElementById("mgrViewSel"); if(_s0) _s0.value="week";
   mgrSetView("week");   /* default: current week */
 }else{
   $("#notifWrap").hidden=false;
