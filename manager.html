@@ -391,8 +391,14 @@
   .toolbtns.mgr-toolbtns{justify-content:center;gap:10px;align-items:center}
   .toolbtns.mgr-toolbtns>*{flex:0 0 auto;width:auto}
   .toolbtns.mgr-toolbtns .iconbtn{flex:0 0 auto;width:auto;min-width:56px}
-  .mgr-viewbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:12px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
+  .mgr-viewbtn{display:inline-flex;align-items:center;gap:8px;height:44px;box-sizing:border-box;border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:12px;padding:0 16px;font-weight:800;font-size:14px;cursor:pointer;-webkit-appearance:none;white-space:nowrap;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .mgr-viewbtn>span,.mgr-viewbtn>svg{pointer-events:none}
   .mgr-viewbtn .chev{width:16px;height:16px;flex:0 0 auto}
+  /* search: same pill height as the selector, icon only */
+  .toolbtns.mgr-toolbtns #mgrSearchBtn{flex-direction:row;height:44px;box-sizing:border-box;min-height:0;min-width:auto;padding:0 16px;border:1px solid #d8dde6;background:#f2f4f7;border-radius:12px;color:#1a2b45;align-items:center;justify-content:center;gap:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  .toolbtns.mgr-toolbtns #mgrSearchBtn::after{display:none!important}
+  .toolbtns.mgr-toolbtns #mgrSearchBtn svg{width:20px;height:20px;margin:0;pointer-events:none}
+  .mgr-viewopts button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   @media(max-width:720px){ .mgr-viewopts button{flex:1 1 40%} }
   .gov-head__row{display:grid;grid-template-columns:var(--head-emblem) 1fr var(--head-emblem);align-items:center;gap:clamp(10px,2vw,26px);max-width:1180px;margin:0 auto}
   .gov-head__emblem{justify-self:start}
@@ -1455,7 +1461,7 @@ document.addEventListener("click",e=>{ if(!e.target.closest(".daybar-wrap") && !
 /* manager cannot create; secretary gets notifications + polling */
 $("#btnSettings")?.remove();   /* URL is baked into every file — no one needs settings */
 if(isMgr){
-  $("#btnAdd").style.display="none";
+  $("#btnAdd")?.remove();
   $("#notifWrap")?.remove();
   ["#fsDown","#fsUp","#btnArchive","#btnPrint","#btnPdf","#btnPreview","#btnAllUpcoming"].forEach(s=>$(s)?.remove());
 
