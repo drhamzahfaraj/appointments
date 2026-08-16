@@ -382,6 +382,18 @@
   .stickytop{background:#fff}
   .sheet>.stickytop{position:sticky;top:0;z-index:50;background:#fff}
   .stickytop .filters{margin:0 0 12px}
+  /* manager: grouped view selector + inline options (no popup) + collapsible search panel */
+  .mgr-viewsel{display:inline-flex}
+  .mgr-viewopts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px auto 0;max-width:1180px}
+  .mgr-viewopts button{border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:999px;padding:8px 18px;font-weight:800;font-size:14px;cursor:pointer;-webkit-appearance:none}
+  .mgr-viewopts button.sel{background:#1a2b45;color:#fff;border-color:#1a2b45}
+  .mgr-searchpanel{margin-top:6px}
+  .toolbtns.mgr-toolbtns{justify-content:center;gap:10px;align-items:center}
+  .toolbtns.mgr-toolbtns>*{flex:0 0 auto;width:auto}
+  .toolbtns.mgr-toolbtns .iconbtn{flex:0 0 auto;width:auto;min-width:56px}
+  .mgr-viewbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:12px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
+  .mgr-viewbtn .chev{width:16px;height:16px;flex:0 0 auto}
+  @media(max-width:720px){ .mgr-viewopts button{flex:1 1 40%} }
   .gov-head__row{display:grid;grid-template-columns:var(--head-emblem) 1fr var(--head-emblem);align-items:center;gap:clamp(10px,2vw,26px);max-width:1180px;margin:0 auto}
   .gov-head__emblem{justify-self:start}
   .gov-head__emblem img{width:var(--head-emblem);height:auto;display:block}
@@ -1445,7 +1457,51 @@ $("#btnSettings")?.remove();   /* URL is baked into every file — no one needs 
 if(isMgr){
   $("#btnAdd").style.display="none";
   $("#notifWrap")?.remove();
-  ["#fsDown","#fsUp","#btnArchive","#btnPrint","#btnPdf"].forEach(s=>$(s)?.remove());
+  ["#fsDown","#fsUp","#btnArchive","#btnPrint","#btnPdf","#btnPreview","#btnAllUpcoming"].forEach(s=>$(s)?.remove());
+
+  /* ===== manager view controls: grouped view-selector icon + search icon (inline, no popups) ===== */
+  var _tb=document.querySelector(".toolbtns");
+  if(_tb && !document.getElementById("mgrViewBtn")){
+    /* search icon first -> sits on the RIGHT in RTL */
+    var _sb=document.createElement("button"); _sb.className="iconbtn"; _sb.id="mgrSearchBtn"; _sb.setAttribute("data-tip","بحث وتصفية"); _sb.setAttribute("aria-label","بحث وتصفية");
+    _sb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>';
+    /* one merged view selector; click to choose which appointments to view */
+    var _vbtn=document.createElement("button"); _vbtn.className="mgr-viewbtn"; _vbtn.id="mgrViewBtn"; _vbtn.setAttribute("aria-label","اختيار العرض");
+    _vbtn.innerHTML='<span id="mgrViewLabel">مواعيد الأسبوع الحالي</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>';
+    _tb.appendChild(_sb); _tb.appendChild(_vbtn); _tb.classList.add("mgr-toolbtns");
+    var _opts=document.createElement("div"); _opts.id="mgrViewOpts"; _opts.className="mgr-viewopts"; _opts.hidden=true;
+    _opts.innerHTML='<button data-v="today">مواعيد اليوم</button><button data-v="week">مواعيد الأسبوع الحالي</button><button data-v="all">مواعيد اليوم فصاعدًا</button>';
+    var _toolbar=document.querySelector(".toolbar"); _toolbar.parentNode.insertBefore(_opts,_toolbar.nextSibling);
+  }
+  /* remove the status filters bar for the manager */
+  document.querySelector(".filters")?.remove();
+  /* collapse the navy day tabs + date fields into a search panel, hidden until the search icon is tapped */
+  var _dayw=document.querySelector(".daybar-wrap"), _rangeb=document.querySelector(".rangebar");
+  if(_dayw && _rangeb && !document.getElementById("mgrSearchPanel")){
+    var _panel=document.createElement("div"); _panel.id="mgrSearchPanel"; _panel.className="mgr-searchpanel"; _panel.hidden=true;
+    _dayw.parentNode.insertBefore(_panel,_dayw); _panel.appendChild(_dayw); _panel.appendChild(_rangeb);
+  }
+  function mgrHeaderDate(mode){
+    var el=document.getElementById("govWeekRange"); if(!el) return;
+    if(mode==="today"){ var t=todayISO(); el.textContent=hijriLong(t)+"هـ ـ "+gregLong(t)+"م"; }
+    else if(mode==="all"){ var t2=todayISO(); el.textContent="المواعيد من "+hijriLong(t2)+"هـ ـ "+gregLong(t2)+"م فصاعدًا"; }
+    else { var wr=weekRange(); el.textContent=hijriLong(wr[0])+"هـ ـ "+gregLong(wr[0])+"م / "+hijriLong(wr[1])+"هـ ـ "+gregLong(wr[1])+"م"; }
+  }
+  function mgrSetView(mode){
+    searchTerm=""; var sb=document.getElementById("searchBox"); if(sb) sb.value="";
+    rangeFrom=""; rangeTo=""; var rf=document.getElementById("rangeFrom"), rt=document.getElementById("rangeTo"); if(rf) rf.value=""; if(rt) rt.value="";
+    selectedWeekday=null;
+    if(mode==="today"){ selectedDate=todayISO(); }
+    else { selectedDate=null; viewMode=(mode==="all")?"all":"week"; }
+    document.querySelectorAll("#mgrViewOpts button").forEach(function(x){ x.classList.toggle("sel", x.dataset.v===mode); });
+    var txt = mode==="today"?"مواعيد اليوم":mode==="all"?"مواعيد اليوم فصاعدًا":"مواعيد الأسبوع الحالي";
+    var lbl=document.getElementById("mgrViewLabel"); if(lbl) lbl.textContent=txt;
+    mgrHeaderDate(mode); render();
+  }
+  document.getElementById("mgrViewBtn")?.addEventListener("click",function(){ var o=document.getElementById("mgrViewOpts"); if(o) o.hidden=!o.hidden; });
+  document.querySelectorAll("#mgrViewOpts button").forEach(function(btn){ btn.addEventListener("click",function(){ mgrSetView(btn.dataset.v); var o=document.getElementById("mgrViewOpts"); if(o) o.hidden=true; }); });
+  document.getElementById("mgrSearchBtn")?.addEventListener("click",function(){ var p=document.getElementById("mgrSearchPanel"); if(p) p.hidden=!p.hidden; });
+  mgrSetView("week");   /* default: current week */
 }else{
   $("#notifWrap").hidden=false;
   $("#btnNotif").addEventListener("click",e=>{ e.stopPropagation();
