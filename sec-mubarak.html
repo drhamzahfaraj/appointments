@@ -1482,7 +1482,7 @@ if(isMgr){
       var sbtn=document.createElement("button"); sbtn.className="iconbtn"; sbtn.id="secSearchBtn"; sbtn.setAttribute("data-tip","بحث"); sbtn.setAttribute("aria-label","بحث وتصفية");
       sbtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>';
       var sel=document.createElement("select"); sel.id="secViewSel"; sel.className="mgr-viewsel-native"; sel.setAttribute("aria-label","اختيار العرض");
-      sel.innerHTML='<option value="all">اليوم فصاعدا</option><option value="week">مواعيد الأسبوع</option><option value="everything">جميع المواعيد</option>';
+      sel.innerHTML='<option value="today">مواعيد اليوم</option><option value="week">مواعيد الأسبوع</option><option value="everything">جميع المواعيد</option>';
       var prBtn=document.createElement("button"); prBtn.className="iconbtn"; prBtn.id="secPrintBtn"; prBtn.setAttribute("data-tip","طباعة"); prBtn.setAttribute("aria-label","طباعة الجدول");
       prBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>';
       var pdfBtn=document.createElement("button"); pdfBtn.className="iconbtn"; pdfBtn.id="secPdfBtn"; pdfBtn.setAttribute("data-tip","PDF"); pdfBtn.setAttribute("aria-label","تصدير PDF");
@@ -1498,14 +1498,14 @@ if(isMgr){
     function secHeaderDate(mode){
       var el=document.getElementById("govWeekRange"); if(!el) return;
       if(mode==="everything"){ el.textContent="جميع المواعيد"; }
-      else if(mode==="all"){ var t2=todayISO(); el.textContent="المواعيد من "+hijriLong(t2)+"هـ ـ "+gregLong(t2)+"م فصاعدًا"; }
+      else if(mode==="today"){ var t2=todayISO(); el.textContent=hijriLong(t2)+"هـ ـ "+gregLong(t2)+"م"; }
       else { var wr=weekRange(); el.textContent=hijriLong(wr[0])+"هـ ـ "+gregLong(wr[0])+"م / "+hijriLong(wr[1])+"هـ ـ "+gregLong(wr[1])+"م"; }
     }
     function secSetView(mode){
       searchTerm=""; var s2=document.getElementById("searchBox"); if(s2) s2.value="";
       rangeFrom=""; rangeTo=""; var rf=document.getElementById("rangeFrom"), rt=document.getElementById("rangeTo"); if(rf) rf.value=""; if(rt) rt.value="";
       selectedWeekday=null;
-      selectedDate=null; viewMode=mode;
+      if(mode==="today"){ selectedDate=todayISO(); } else { selectedDate=null; viewMode=mode; }
       var sel=document.getElementById("secViewSel"); if(sel && sel.value!==mode) sel.value=mode;
       secHeaderDate(mode); render();
     }
@@ -1533,6 +1533,16 @@ void 0 /* duplicate poller removed */; /* auto-refresh every 30 seconds (both ro
 updateOfflineChip();
 render();               /* show cached appointments instantly */
 flushQueue();
+/* ===== demo/seed mode for testing — open the page with ?demo=1 at the end of the URL ===== */
+if(location.search.indexOf('demo')>=0){
+  refresh=function(){
+    var mk=function(off,tm,pur,loc){ var d=new Date(); d.setDate(d.getDate()+off); var iso=d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); return {id:'demo'+off+tm,date:iso,time:tm,purpose:pur,description:pur,duration:'30',location:loc,notes:'—',status:'approved',createdBy:ACTOR,createdAt:'',updatedAt:'',updatedBy:'',decidedBy:'',decidedAt:'',origDate:iso,origTime:tm}; };
+    data.length=0;
+    [mk(0,'09:30','استقبال وفد رسمي','المكتب'),mk(0,'11:00','اجتماع لجنة التطوير','قاعة الاجتماعات'),mk(1,'10:00','زيارة ميدانية','الميدان'),mk(2,'13:00','توقيع اتفاقية تعاون','المكتب'),mk(4,'09:00','مؤتمر صحفي','القاعة الكبرى'),mk(-3,'10:00','اجتماع سابق','المكتب'),mk(-10,'12:00','لقاء تعريفي','المكتب')].forEach(function(x){ data.push(x); });
+    if(typeof render==='function') render();
+    return Promise.resolve(data.slice());
+  };
+}
 refresh(data.length>0);  /* then sync silently in the background */
 </script>
 <script>
