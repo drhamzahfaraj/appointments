@@ -89,7 +89,7 @@
   .badge{position:absolute;top:-6px;inset-inline-end:-6px;background:var(--no);color:#fff;font-size:10px;font-weight:800;
     min-width:16px;height:16px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px}
   .notifpanel{position:absolute;top:calc(100% + 8px);inset-inline-end:0;width:300px;max-height:360px;overflow:auto;
-    background:#fff;border:1px solid #d7dbe2;border-radius:10px;box-shadow:0 12px 34px rgba(16,25,45,.18);z-index:45}
+    background:#fff;border:1px solid #d7dbe2;border-radius:10px;box-shadow:0 12px 34px rgba(16,25,45,.18);z-index:200}
   .nphead{font-weight:800;font-size:13px;padding:11px 14px;border-bottom:1px solid #eef0f2}
   .npbody{padding:6px}
   .npitem{padding:9px 11px;border-radius:8px;display:flex;flex-direction:column;gap:2px}
@@ -1309,9 +1309,10 @@ function buildPrintable(statusK){
     <tbody>${rows}</tbody></table></div></div>`;
 }
 function doPrint(statusK){
+  if(window.__printBusy) return; window.__printBusy=true; setTimeout(()=>{ window.__printBusy=false; },1500);
   const html=buildPrintable(statusK||'all');
-  if(!html){ toast("لا توجد مواعيد لعرضها في الجدول",true); return; }
-  $("#printRoot").innerHTML=html; window.print();
+  if(!html){ toast("لا توجد مواعيد لعرضها في الجدول",true); window.__printBusy=false; return; }
+  $("#printRoot").innerHTML=html; try{ window.print(); }catch(e){}
 }
 function renderPreview(){
   const html=buildPrintable(prevMode);
@@ -1376,7 +1377,8 @@ function ensureHtml2pdf(){
     if(window.html2pdf) return resolve();
     const s=document.createElement("script");
     s.src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js";
-    s.onload=()=>resolve(); s.onerror=()=>reject();
+    let done=false; const to=setTimeout(()=>{ if(!done){done=true;reject(new Error("timeout"));} },8000);
+    s.onload=()=>{ if(!done){done=true;clearTimeout(to);resolve();} }; s.onerror=()=>{ if(!done){done=true;clearTimeout(to);reject();} };
     document.body.appendChild(s);
   });
 }
@@ -1391,7 +1393,7 @@ function exportPDF(statusK){
     wrap.style.cssText="position:fixed;top:0;inset-inline-start:-99999px;width:1000px;background:#fff";
     wrap.innerHTML=html; document.body.appendChild(wrap);
     const el=wrap.querySelector(".sheet");
-    window.html2pdf().set({margin:6, filename:"جدول-المواعيد.pdf", image:{type:"jpeg",quality:0.97}, html2canvas:{scale:1.5,useCORS:true,backgroundColor:"#ffffff"}, jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}})
+    window.html2pdf().set({margin:6, filename:"جدول-المواعيد.pdf", image:{type:"jpeg",quality:0.97}, html2canvas:{scale:1,useCORS:true,backgroundColor:"#ffffff"}, jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}})
       .from(el).save().then(()=>{ wrap.remove(); window.__pdfBusy=false; toast("تم إنشاء ملف PDF"); }).catch(()=>{ wrap.remove(); window.__pdfBusy=false; toast("تعذّر إنشاء PDF — سيتم فتح نافذة الطباعة",true); doPrint(statusK||filter); });
   }).catch(()=>{ window.__pdfBusy=false; toast("يتطلب اتصالًا لتصدير PDF — استخدم الطباعة ثم «حفظ بصيغة PDF»",true); doPrint(statusK||filter); });
 }
