@@ -2,6 +2,9 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -385,13 +388,13 @@
   .mgr-viewsel-native{height:44px;box-sizing:border-box;border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:12px;padding:0 10px 0 28px;font-weight:800;font-size:13px;font-family:var(--font);-webkit-appearance:none;appearance:none;cursor:pointer;touch-action:manipulation;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a2b45' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:left 12px center}
   .mgr-searchpanel{margin-top:6px}
   .mgr-export-sel{padding:0 10px 0 28px;font-size:13px;background-position:left 8px center}
-  .toolbtns.sec-toolbtns{justify-content:center;gap:5px;flex-wrap:nowrap;align-items:center}
+  .toolbtns.sec-toolbtns{justify-content:center;gap:4px;flex-wrap:nowrap;align-items:center}
   .toolbtns.sec-toolbtns>*{flex:0 0 auto;width:auto}
-  .toolbtns.sec-toolbtns .iconbtn{flex:0 0 auto;height:44px;box-sizing:border-box;min-height:0;min-width:auto;width:auto;padding:0 9px;border:1px solid #d8dde6;background:#f2f4f7;border-radius:12px;color:#1a2b45;flex-direction:row;align-items:center;justify-content:center;gap:0;touch-action:manipulation}
+  .toolbtns.sec-toolbtns .iconbtn{flex:0 0 auto;height:44px;box-sizing:border-box;min-height:0;min-width:auto;width:auto;padding:0 7px;border:1px solid #d8dde6;background:#f2f4f7;border-radius:12px;color:#1a2b45;flex-direction:row;align-items:center;justify-content:center;gap:0;touch-action:manipulation}
   .toolbtns.sec-toolbtns .iconbtn::after{display:none!important}
   .toolbtns.sec-toolbtns .iconbtn svg{width:20px;height:20px;margin:0;pointer-events:none}
   .toolbtns.sec-toolbtns .notifwrap{display:inline-flex;align-items:center}
-  .toolbtns.sec-toolbtns #secViewSel{flex:0 0 auto;min-width:0;max-width:170px}
+  .toolbtns.sec-toolbtns #secViewSel{flex:0 0 auto;min-width:0;max-width:150px}
   .toolbtns.sec-toolbtns .mgr-export-sel{flex:0 0 auto;width:72px;min-width:72px}
   .sec-exportopts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px auto 0;max-width:1180px}
   .sec-exportopts button{border:1px solid #d8dde6;background:#f2f4f7;color:#1a2b45;border-radius:999px;padding:8px 18px;font-weight:800;font-size:14px;cursor:pointer;-webkit-appearance:none;touch-action:manipulation}
@@ -1006,6 +1009,7 @@ function inCurrentScope(a){
   if(searchTerm) return matchesSearch(a,searchTerm);
   if(selectedDate) return a.date===selectedDate;                       /* explicit day: show all in it */
   if(rangeFrom && rangeTo) return a.date && a.date>=rangeFrom && a.date<=rangeTo;   /* interval: show all in it */
+  if(viewMode==='everything') return true;                                     /* all appointments (past + future) */
   /* default views (week / all-from-today) */
   const inRange = (viewMode==='all') ? (a.date && a.date>=todayISO())
     : (()=>{ const [ws,we]=weekRange(); return a.date && a.date>=ws && a.date<=we; })();
@@ -1016,6 +1020,7 @@ function inCurrentScope(a){
 
 /* table: current week by default; auto-archives finished appointments */
 function render(){
+  try{ renderSummary(); }catch(_rsErr){}
   const nowTs=Date.now();
   let nowId=null, nextId=null, nextTs=Infinity;
   data.forEach(a=>{
@@ -1050,18 +1055,25 @@ function render(){
 function renderSummary(){
   const el=$("#summaryStrip"); if(!el) return;
   const t=todayISO(), now=Date.now();
-  let scope, label;
-  if(selectedDate){ scope=a=>a.date===selectedDate; label=(selectedDate===t)?"مواعيد اليوم":"مواعيد هذا اليوم"; }
-  else if(viewMode==='all'){ scope=a=>a.date && a.date>=t; label="المواعيد القادمة"; }
-  else { const wr=weekRange(); scope=a=>a.date && a.date>=wr[0] && a.date<=wr[1]; label="مواعيد الأسبوع"; }
-  const items=data.filter(a=>scope(a) && dispStatus(a).k!=='cancelled');
-  const upcoming=items.filter(a=>a.time && new Date(a.date+"T"+a.time).getTime()>now)
-    .sort((x,y)=>((x.date+(x.time||""))||"").localeCompare((y.date+(y.time||""))||""));
-  const nextA=upcoming[0];
-  let html=`<span class="sm-item"><span class="sm-dot"></span>${label}: <b>${toAr(items.length)}</b></span>`;
-  if(nextA) html+=`<span class="sm-item sm-next">التالي: <b>${fmtTime(nextA.time)}</b> — ${esc(nextA.purpose)||'موعد'}${nextA.location?(' · '+esc(nextA.location)):''}</span>`;
-  else if(items.length) html+=`<span class="sm-item">لا مواعيد قادمة</span>`;
-  el.innerHTML=html;
+  try {
+    let scope, label;
+    if(selectedDate){ scope=a=>a.date===selectedDate; label=(selectedDate===t)?"مواعيد اليوم":"مواعيد هذا اليوم"; }
+    else if(viewMode==='everything'){ scope=a=>true; label="جميع المواعيد"; }
+    else if(viewMode==='all'){ scope=a=>a.date && a.date>=t; label="اليوم فصاعدًا"; }
+    else { const wr=weekRange(); scope=a=>a.date && a.date>=wr[0] && a.date<=wr[1]; label="مواعيد الأسبوع"; }
+    const items=data.filter(a=>scope(a) && dispStatus(a).k!=='cancelled');
+    const upcoming=items.filter(a=>a.time && new Date(a.date+"T"+a.time).getTime()>now)
+      .sort((x,y)=>((x.date+(x.time||""))||"").localeCompare((y.date+(y.time||""))||""));
+    const nextA=upcoming[0];
+    let html=`<span class="sm-item"><span class="sm-dot"></span>${label}: <b>${toAr(items.length)}</b></span>`;
+    if(nextA) html+=`<span class="sm-item sm-next">التالي: <b>${fmtTime(nextA.time)}</b> — ${esc(nextA.purpose)||'موعد'}${nextA.location?(' · '+esc(nextA.location)):''}</span>`;
+    else if(items.length) html+=`<span class="sm-item">لا مواعيد قادمة</span>`;
+    el.innerHTML=html;
+  } catch(err){
+    try { const n=data.filter(a=>a.date===t && dispStatus(a).k!=='cancelled').length;
+      el.innerHTML=`<span class="sm-item"><span class="sm-dot"></span>مواعيد اليوم: <b>${toAr(n)}</b></span>`;
+    } catch(e2){ el.innerHTML='<span class="sm-item"><span class="sm-dot"></span>المواعيد</span>'; }
+  }
 }
 
 /* click a weekday tab -> toggle popup calendar under it */
@@ -1467,17 +1479,20 @@ if(isMgr){
 }else{
   $("#notifWrap").hidden=false;
   /* ===== grouped view selector + search + print/pdf ===== */
-  (function(){
+  try{ (function(){
     var tb=document.querySelector(".toolbtns"); if(!tb) return;
+    try{ window.__secSetView=secSetView; }catch(_x){}
     ["#btnPreview","#btnAllUpcoming","#btnPrint","#btnPdf","#fsDown","#fsUp","#btnArchive"].forEach(function(s){ var e=document.querySelector(s); if(e) e.remove(); });
     if(!document.getElementById("secViewSel")){
       var sbtn=document.createElement("button"); sbtn.className="iconbtn"; sbtn.id="secSearchBtn"; sbtn.setAttribute("data-tip","بحث"); sbtn.setAttribute("aria-label","بحث وتصفية");
       sbtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>';
       var sel=document.createElement("select"); sel.id="secViewSel"; sel.className="mgr-viewsel-native"; sel.setAttribute("aria-label","اختيار العرض");
-      sel.innerHTML='<option value="today">اليوم</option><option value="week">الأسبوع</option><option value="all">القادمة</option>';
-      var xsel=document.createElement("select"); xsel.className="mgr-viewsel-native mgr-export-sel"; xsel.id="secExportSel"; xsel.setAttribute("aria-label","طباعة أو تصدير PDF");
-      xsel.innerHTML='<option value="" selected hidden>PDF</option><option value="print">طباعة الجدول</option><option value="pdf">تصدير PDF</option>';
-      tb.insertBefore(sel, tb.firstChild); tb.insertBefore(sbtn, tb.firstChild); tb.appendChild(xsel);
+      sel.innerHTML='<option value="today">مواعيد اليوم</option><option value="week">مواعيد الأسبوع</option><option value="everything">جميع المواعيد</option>';
+      var prBtn=document.createElement("button"); prBtn.className="iconbtn"; prBtn.id="secPrintBtn"; prBtn.setAttribute("data-tip","طباعة"); prBtn.setAttribute("aria-label","طباعة الجدول");
+      prBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>';
+      var pdfBtn=document.createElement("button"); pdfBtn.className="iconbtn"; pdfBtn.id="secPdfBtn"; pdfBtn.setAttribute("data-tip","PDF"); pdfBtn.setAttribute("aria-label","تصدير PDF");
+      pdfBtn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>';
+      tb.insertBefore(sel, tb.firstChild); tb.insertBefore(sbtn, tb.firstChild); tb.appendChild(prBtn); tb.appendChild(pdfBtn);
       tb.classList.add("sec-toolbtns");
     }
     var dayw=document.querySelector(".daybar-wrap"), rangeb=document.querySelector(".rangebar");
@@ -1487,25 +1502,22 @@ if(isMgr){
     }
     function secHeaderDate(mode){
       var el=document.getElementById("govWeekRange"); if(!el) return;
-      if(mode==="today"){ var t=todayISO(); el.textContent=hijriLong(t)+"هـ ـ "+gregLong(t)+"م"; }
-      else if(mode==="all"){ var t2=todayISO(); el.textContent="المواعيد من "+hijriLong(t2)+"هـ ـ "+gregLong(t2)+"م فصاعدًا"; }
+      if(mode==="everything"){ el.textContent="جميع المواعيد"; }
+      else if(mode==="today"){ var t2=todayISO(); el.textContent=hijriLong(t2)+"هـ ـ "+gregLong(t2)+"م"; }
       else { var wr=weekRange(); el.textContent=hijriLong(wr[0])+"هـ ـ "+gregLong(wr[0])+"م / "+hijriLong(wr[1])+"هـ ـ "+gregLong(wr[1])+"م"; }
     }
     function secSetView(mode){
       searchTerm=""; var s2=document.getElementById("searchBox"); if(s2) s2.value="";
       rangeFrom=""; rangeTo=""; var rf=document.getElementById("rangeFrom"), rt=document.getElementById("rangeTo"); if(rf) rf.value=""; if(rt) rt.value="";
       selectedWeekday=null;
-      if(mode==="today"){ selectedDate=todayISO(); }
-      else { selectedDate=null; viewMode=(mode==="all")?"all":"week"; }
+      if(mode==="today"){ selectedDate=todayISO(); } else { selectedDate=null; viewMode=mode; }
       var sel=document.getElementById("secViewSel"); if(sel && sel.value!==mode) sel.value=mode;
       secHeaderDate(mode); render();
     }
-    document.getElementById("secViewSel")?.addEventListener("change",function(){ secSetView(this.value); });
-    document.getElementById("secSearchBtn")?.addEventListener("click",function(){ var p=document.getElementById("secSearchPanel"); if(p) p.hidden=!p.hidden; });
-    document.getElementById("secExportSel")?.addEventListener("change",function(){ var v=this.value; this.value=""; if(v==="print") doPrint(filter); else if(v==="pdf") exportPDF(filter); });
+    /* click/change handlers attached via delegation in boot (robust) */
     var s0=document.getElementById("secViewSel"); if(s0) s0.value="week";
     secSetView("week");
-  })();
+  })(); }catch(_setupErr){ try{ if(typeof render==="function") render(); }catch(_e){} }
   $("#btnNotif").addEventListener("click",e=>{ e.stopPropagation();
     const p=$("#notifPanel"); p.hidden=!p.hidden;
     if(!p.hidden) renderNotif();
@@ -1516,6 +1528,15 @@ if(isMgr){
 }
 
 /* boot */
+/* robust delegated handlers for secretary controls */
+if(typeof isMgr==='undefined' || !isMgr){
+  document.addEventListener("click",function(ev){ var el=(ev.target&&ev.target.closest)?ev.target.closest("button"):null; if(!el) return;
+    if(el.id==="secSearchBtn"){ var p=document.getElementById("secSearchPanel"); if(p) p.hidden=!p.hidden; }
+    else if(el.id==="secPrintBtn"){ try{ doPrint(filter); }catch(e){} }
+    else if(el.id==="secPdfBtn"){ try{ exportPDF(filter); }catch(e){} }
+  });
+  document.addEventListener("change",function(ev){ if(ev.target&&ev.target.id==="secViewSel"&&window.__secSetView){ try{ window.__secSetView(ev.target.value); }catch(e){} } });
+}
 document.querySelectorAll(".iconbtn[title]").forEach(el=>{ const t=el.getAttribute("title"); el.setAttribute("aria-label",t); el.dataset.tip=t; el.removeAttribute("title"); });
 applyFontScale();
 updateViewBtn();
@@ -1523,6 +1544,16 @@ void 0 /* duplicate poller removed */; /* auto-refresh every 30 seconds (both ro
 updateOfflineChip();
 render();               /* show cached appointments instantly */
 flushQueue();
+/* ===== demo/seed mode for testing — open the page with ?demo=1 at the end of the URL ===== */
+if(location.search.indexOf('demo')>=0){
+  refresh=function(){
+    var mk=function(off,tm,pur,loc){ var d=new Date(); d.setDate(d.getDate()+off); var iso=d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); return {id:'demo'+off+tm,date:iso,time:tm,purpose:pur,description:pur,duration:'30',location:loc,notes:'—',status:'approved',createdBy:ACTOR,createdAt:'',updatedAt:'',updatedBy:'',decidedBy:'',decidedAt:'',origDate:iso,origTime:tm}; };
+    data.length=0;
+    [mk(0,'09:30','استقبال وفد رسمي','المكتب'),mk(0,'11:00','اجتماع لجنة التطوير','قاعة الاجتماعات'),mk(1,'10:00','زيارة ميدانية','الميدان'),mk(2,'13:00','توقيع اتفاقية تعاون','المكتب'),mk(4,'09:00','مؤتمر صحفي','القاعة الكبرى'),mk(-3,'10:00','اجتماع سابق','المكتب'),mk(-10,'12:00','لقاء تعريفي','المكتب')].forEach(function(x){ data.push(x); });
+    if(typeof render==='function') render();
+    return Promise.resolve(data.slice());
+  };
+}
 refresh(data.length>0);  /* then sync silently in the background */
 </script>
 <script>

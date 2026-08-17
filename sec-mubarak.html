@@ -1020,6 +1020,7 @@ function inCurrentScope(a){
 
 /* table: current week by default; auto-archives finished appointments */
 function render(){
+  try{ renderSummary(); }catch(_rsErr){}
   const nowTs=Date.now();
   let nowId=null, nextId=null, nextTs=Infinity;
   data.forEach(a=>{
@@ -1478,8 +1479,9 @@ if(isMgr){
 }else{
   $("#notifWrap").hidden=false;
   /* ===== grouped view selector + search + print/pdf ===== */
-  (function(){
+  try{ (function(){
     var tb=document.querySelector(".toolbtns"); if(!tb) return;
+    try{ window.__secSetView=secSetView; }catch(_x){}
     ["#btnPreview","#btnAllUpcoming","#btnPrint","#btnPdf","#fsDown","#fsUp","#btnArchive"].forEach(function(s){ var e=document.querySelector(s); if(e) e.remove(); });
     if(!document.getElementById("secViewSel")){
       var sbtn=document.createElement("button"); sbtn.className="iconbtn"; sbtn.id="secSearchBtn"; sbtn.setAttribute("data-tip","بحث"); sbtn.setAttribute("aria-label","بحث وتصفية");
@@ -1512,13 +1514,10 @@ if(isMgr){
       var sel=document.getElementById("secViewSel"); if(sel && sel.value!==mode) sel.value=mode;
       secHeaderDate(mode); render();
     }
-    document.getElementById("secViewSel")?.addEventListener("change",function(){ secSetView(this.value); });
-    document.getElementById("secSearchBtn")?.addEventListener("click",function(){ var p=document.getElementById("secSearchPanel"); if(p) p.hidden=!p.hidden; });
-    document.getElementById("secPrintBtn")?.addEventListener("click",function(){ doPrint(filter); });
-    document.getElementById("secPdfBtn")?.addEventListener("click",function(){ exportPDF(filter); });
+    /* click/change handlers attached via delegation in boot (robust) */
     var s0=document.getElementById("secViewSel"); if(s0) s0.value="week";
     secSetView("week");
-  })();
+  })(); }catch(_setupErr){ try{ if(typeof render==="function") render(); }catch(_e){} }
   $("#btnNotif").addEventListener("click",e=>{ e.stopPropagation();
     const p=$("#notifPanel"); p.hidden=!p.hidden;
     if(!p.hidden) renderNotif();
@@ -1529,6 +1528,15 @@ if(isMgr){
 }
 
 /* boot */
+/* robust delegated handlers for secretary controls */
+if(typeof isMgr==='undefined' || !isMgr){
+  document.addEventListener("click",function(ev){ var el=(ev.target&&ev.target.closest)?ev.target.closest("button"):null; if(!el) return;
+    if(el.id==="secSearchBtn"){ var p=document.getElementById("secSearchPanel"); if(p) p.hidden=!p.hidden; }
+    else if(el.id==="secPrintBtn"){ try{ doPrint(filter); }catch(e){} }
+    else if(el.id==="secPdfBtn"){ try{ exportPDF(filter); }catch(e){} }
+  });
+  document.addEventListener("change",function(ev){ if(ev.target&&ev.target.id==="secViewSel"&&window.__secSetView){ try{ window.__secSetView(ev.target.value); }catch(e){} } });
+}
 document.querySelectorAll(".iconbtn[title]").forEach(el=>{ const t=el.getAttribute("title"); el.setAttribute("aria-label",t); el.dataset.tip=t; el.removeAttribute("title"); });
 applyFontScale();
 updateViewBtn();
