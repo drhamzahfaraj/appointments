@@ -1308,12 +1308,22 @@ function buildPrintable(statusK){
     <thead><tr><th><u>اليوم</u></th><th><u>الوقت</u></th><th><u>الزيارات والاجتماعات</u></th><th><u>الهدف</u></th><th><u>المدة</u></th><th><u>الموقع</u></th><th><u>ملاحظات</u></th>${showStatus?'<th><u>الحالة</u></th>':''}</tr></thead>
     <tbody>${rows}</tbody></table></div></div>`;
 }
-function doPrint(statusK){
-  if(window.__printBusy) return; window.__printBusy=true; setTimeout(()=>{ window.__printBusy=false; },1500);
-  const html=buildPrintable(statusK||'all');
-  if(!html){ toast("لا توجد مواعيد لعرضها في الجدول",true); window.__printBusy=false; return; }
-  $("#printRoot").innerHTML=html; try{ window.print(); }catch(e){}
+function getPrintCss(){
+  var out=""; var st=document.querySelectorAll("style");
+  for(var i=0;i<st.length;i++){ out+=st[i].textContent+"\n"; }
+  out=out.replace(/@font-face\s*\{[^}]*\}/g,"");
+  out+="\n#printRoot{display:block!important;position:static!important;left:auto!important;padding:8px} .sheet{box-shadow:none;margin:0 auto}";
+  return out;
 }
+function openPrintable(statusK){
+  var html=buildPrintable(statusK||filter);
+  if(!html){ toast("لا توجد مواعيد لعرضها",true); return; }
+  var w=null; try{ w=window.open("","_blank"); }catch(e){}
+  if(!w){ toast("فضلاً اسمح بالنوافذ المنبثقة ثم أعد المحاولة",true); return; }
+  var doc='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>جدول المواعيد</title><style>'+getPrintCss()+'</style></head><body><div id="printRoot">'+html+'</div><scr'+'ipt>window.onload=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},450);};</scr'+'ipt></body></html>';
+  try{ w.document.open(); w.document.write(doc); w.document.close(); }catch(e){ try{ toast("تعذّر فتح نافذة الطباعة",true); }catch(_){} }
+}
+function doPrint(statusK){ openPrintable(statusK||'all'); }
 function renderPreview(){
   const html=buildPrintable(prevMode);
   $("#previewBox").innerHTML = html || '<div style="padding:44px;text-align:center;color:#6a6f75;font-weight:800">لا توجد مواعيد مطابقة لعرضها.</div>';
@@ -1382,21 +1392,7 @@ function ensureHtml2pdf(){
     document.body.appendChild(s);
   });
 }
-function exportPDF(statusK){
-  if(window.__pdfBusy) return;
-  const html=buildPrintable(statusK||filter);
-  if(!html){ toast("لا توجد مواعيد للتصدير",true); return; }
-  toast("جارٍ إنشاء ملف PDF…");
-  window.__pdfBusy=true;
-  ensureHtml2pdf().then(()=>{
-    const wrap=document.createElement("div");
-    wrap.style.cssText="position:fixed;top:0;inset-inline-start:-99999px;width:1000px;background:#fff";
-    wrap.innerHTML=html; document.body.appendChild(wrap);
-    const el=wrap.querySelector(".sheet");
-    window.html2pdf().set({margin:6, filename:"جدول-المواعيد.pdf", image:{type:"jpeg",quality:0.97}, html2canvas:{scale:1,useCORS:true,backgroundColor:"#ffffff"}, jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}})
-      .from(el).save().then(()=>{ wrap.remove(); window.__pdfBusy=false; toast("تم إنشاء ملف PDF"); }).catch(()=>{ wrap.remove(); window.__pdfBusy=false; toast("تعذّر إنشاء PDF — سيتم فتح نافذة الطباعة",true); doPrint(statusK||filter); });
-  }).catch(()=>{ window.__pdfBusy=false; toast("يتطلب اتصالًا لتصدير PDF — استخدم الطباعة ثم «حفظ بصيغة PDF»",true); doPrint(statusK||filter); });
-}
+function exportPDF(statusK){ openPrintable(statusK||filter); }
 
 /* ===== font size ===== */
 function applyFontScale(){ const t=document.querySelector(".appttable"); if(t) t.style.setProperty("--tfs", cfg.fontScale||1); }
@@ -1520,10 +1516,7 @@ if(isMgr){
     var s0=document.getElementById("secViewSel"); if(s0) s0.value="week";
     secSetView("week");
   })(); }catch(_setupErr){ try{ if(typeof render==="function") render(); }catch(_e){} }
-  $("#btnNotif").addEventListener("click",e=>{ e.stopPropagation();
-    const p=$("#notifPanel"); p.hidden=!p.hidden;
-    if(!p.hidden) renderNotif();
-  });
+  /* notif toggle handled via delegation */
   $("#notifRead").addEventListener("click",e=>{ e.stopPropagation(); markNotifsRead(); });
   document.addEventListener("click",e=>{ if(!e.target.closest("#notifWrap")){ const p=$("#notifPanel"); if(p&&!p.hidden) p.hidden=true; } });
   setInterval(()=>refresh(true), 3000);
@@ -1536,6 +1529,7 @@ if(typeof isMgr==='undefined' || !isMgr){
     if(el.id==="secSearchBtn"){ var p=document.getElementById("secSearchPanel"); if(p) p.hidden=!p.hidden; }
     else if(el.id==="secPrintBtn"){ try{ doPrint(filter); }catch(e){} }
     else if(el.id==="secPdfBtn"){ try{ exportPDF(filter); }catch(e){} }
+    else if(el.id==="btnNotif"){ var np=document.getElementById("notifPanel"); if(np){ np.hidden=!np.hidden; if(!np.hidden && typeof renderNotif==="function"){ try{ renderNotif(); }catch(e){} } } }
   });
   document.addEventListener("change",function(ev){ if(ev.target&&ev.target.id==="secViewSel"&&window.__secSetView){ try{ window.__secSetView(ev.target.value); }catch(e){} } });
 }
